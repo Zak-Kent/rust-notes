@@ -3,12 +3,15 @@
 *** Three layers of a syntax tree
     - GreenNodes: Rowan concept, a tree of the input data with all whitespace
       preserved. This is the only place where data lives all the other
-      structures point into the Green tree.
-    - SyntaxNodes (Red nodes): Nodes that hold the semantic structure of the
-      language, these are also defined in Rowan. You use these Red trees to
-      access the information in like you would in another parser and then point
-      into the green tree.
-    - AST: Not sure of the distinction between the AST and the Syntax Nodes
-
-
-
+      structures point into the Green tree. Parents point down to children and
+      traversal can only be done top down. This tree is dynamically typed and
+      uses Rc to share the structure of nodes.
+    - SyntaxNodes (Red nodes): A tree structure built on top of the green tree.
+      There is a red node for each green node. The red tree points in the opposite
+      direction of the green tree (red points bottom up). This allows children to
+      have access to their parents. You can think of the red tree like a functional
+      zipper. It provides an api to traverse the tree and allows access to a given
+      node while you're traversing the tree (cursor).
+    - AST: built on top of the red/green trees, can be statically typed and used
+      like any other AST, but contains pointers into the red/green tree to access
+      underlying data
