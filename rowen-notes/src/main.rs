@@ -13,6 +13,7 @@
 
 mod green;
 mod kinds;
+mod lexer;
 
 fn main() {
     println!("Hello, world!");

@@ -65,7 +65,7 @@ impl fmt::Display for NodeOrToken<Node, Token> {
 // later on when modifying the children of a node
 pub type Token = Rc<TokenData>;
 // a leaf node in the tree
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct TokenData {
     pub kind: SyntaxKind,
     pub text: String,
@@ -81,7 +81,7 @@ impl TokenData {
     }
 
     pub fn text(&self) -> &str {
-        &self.text.as_str()
+        self.text.as_str()
     }
 
     pub fn text_len(&self) -> usize {

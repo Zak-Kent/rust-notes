@@ -3,7 +3,7 @@
 */
 
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct SyntaxKind(u16);
 
 // Nodes
@@ -19,3 +19,5 @@ pub const INT: SyntaxKind = SyntaxKind(103);
 pub const PLUS: SyntaxKind = SyntaxKind(104);
 pub const WHITESPACE: SyntaxKind = SyntaxKind(105);
 pub const STAR: SyntaxKind = SyntaxKind(106);
+pub const L_PAREN: SyntaxKind = SyntaxKind(107);
+pub const R_PAREN: SyntaxKind = SyntaxKind(108);
