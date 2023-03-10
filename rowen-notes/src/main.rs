@@ -12,6 +12,7 @@
  */
 
 mod green;
+mod red;
 mod kinds;
 mod lexer;
 
