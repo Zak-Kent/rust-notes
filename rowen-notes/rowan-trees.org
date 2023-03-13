@@ -15,3 +15,23 @@
     - AST: built on top of the red/green trees, can be statically typed and used
       like any other AST, but contains pointers into the red/green tree to access
       underlying data
+
+*** Requirements of syntax tree:
+  Some of these requirements are needed when writing a data structure that works
+  with text in IDEs but may not be strict requirements when dealing with ASTs in
+  compilers.
+    - full-fidelity (whitespace and comments part of tree, this is a IDE need)
+    - resilient and semi-strucutred (can represent arbitrary invalid code)
+    - Immutable value-typed (syntax tree contains same info as underlying string):
+      * traditional comiplers assign identities to nodes in the AST, this works
+        because the tree is static and it doesn't change. With IDEs you want to
+        support refactoring suggestions which means modifying the tree and then
+        producing the modified text from the tree.
+      * Immutable (for a non-IDE compiler mutation isn't as much of a problem, you
+        can mutate nodes during optimization passes for example.) Immutablility
+        helps in IDEs because you always need a copy of the original text that's
+        been converted into a syntax tree
+    - cheaply updatable (need to create updates with refactor suggestions, and
+      with incremental parsing. i.e. when someone is typing and reparsing is
+      needed in a small section of the text)
+    - easy to navigate (ability to go from node to children, parent, siblings)

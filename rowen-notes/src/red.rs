@@ -24,13 +24,6 @@ struct RedNodeData {
     green: GreenNode,
 }
 
-type RedToken = Rc<RedTokenData>;
-struct RedTokenData {
-    parent: RedNode,
-    offset: usize,
-    green: GreenToken,
-}
-
 impl RedNodeData {
     pub fn new(root: GreenNode) -> RedNode {
         Rc::new(RedNodeData {
