@@ -8,6 +8,7 @@ use nom::{
     multi::many1,
     IResult,
 };
+use std::rc::Rc;
 
 fn ws(input: &str) -> IResult<&str, TokenData> {
     let (input, ws) = space1(input)?;
@@ -36,7 +37,7 @@ fn tok_tag(tk: &str, sk: SyntaxKind) -> Box<dyn Fn(&str) -> IResult<&str, TokenD
     })
 }
 
-fn choose_token(input: &str) -> IResult<&str, TokenData> {
+fn choose_token(input: &str) -> IResult<&str, Token> {
     let (input, token) = alt((tok_tag("+", PLUS),
                               tok_tag("*", STAR),
                               tok_tag("(", L_PAREN),
@@ -45,10 +46,11 @@ fn choose_token(input: &str) -> IResult<&str, TokenData> {
                               ws,
                               ident,
     ))(input)?;
-    Ok((input, token))
+    // wrapping tokens in Rc to match what's expected in green tree
+    Ok((input, Rc::new(token)))
 }
 
-fn lex(input: &str) -> IResult<&str, Vec<TokenData>> {
+fn lex(input: &str) -> IResult<&str, Vec<Token>> {
     let (input, tokens) = many1(choose_token)(input)?;
     assert!(input.is_empty());
     Ok((input, tokens))
@@ -64,7 +66,7 @@ mod tokenize_tests {
         let tok = "+";
         if let Ok((leftover, p)) = choose_token(tok){
             assert!(leftover.len() == 0);
-            assert_eq!(p, TokenData::new(PLUS, "+".to_string()))
+            assert_eq!(p, Rc::new(TokenData::new(PLUS, "+".to_string())))
         } else {
             panic!("parse failed")
         }
@@ -76,15 +78,15 @@ mod tokenize_tests {
         if let Ok((leftover, parsed_expr)) = lex(expr){
             assert!(leftover.is_empty());
             assert_eq!(parsed_expr, Vec::from(
-                [TokenData::new(L_PAREN, "(".to_string()),
-                 TokenData::new(PLUS, "+".to_string()),
-                 TokenData::new(WHITESPACE, "  ".to_string()), // notice the double space
-                 TokenData::new(INT, "1".to_string()),
-                 TokenData::new(WHITESPACE, " ".to_string()),
-                 TokenData::new(INT, "23".to_string()),
-                 TokenData::new(WHITESPACE, " ".to_string()),
-                 TokenData::new(IDENT, "foo".to_string()),
-                 TokenData::new(R_PAREN, ")".to_string()),
+                [Rc::new(TokenData::new(L_PAREN, "(".to_string())),
+                 Rc::new(TokenData::new(PLUS, "+".to_string())),
+                 Rc::new(TokenData::new(WHITESPACE, "  ".to_string())), // notice the double space
+                 Rc::new(TokenData::new(INT, "1".to_string())),
+                 Rc::new(TokenData::new(WHITESPACE, " ".to_string())),
+                 Rc::new(TokenData::new(INT, "23".to_string())),
+                 Rc::new(TokenData::new(WHITESPACE, " ".to_string())),
+                 Rc::new(TokenData::new(IDENT, "foo".to_string())),
+                 Rc::new(TokenData::new(R_PAREN, ")".to_string())),
                 ]))
         } else {
             panic!("parse failed")
