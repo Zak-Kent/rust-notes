@@ -9,6 +9,7 @@
 */
 
 use crate::kinds::*;
+use crate::lexer as lex;
 
 use core::fmt;
 use std::fmt::format;
@@ -20,7 +21,7 @@ use std::rc::Rc;
   vector of a given node in the tree, the children can be other Nodes or leaf
   Tokens
 */
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum NodeOrToken<N, T> {
     Node(N),
     Token(T),
@@ -97,7 +98,7 @@ impl fmt::Display for TokenData {
 
 // Internal nodes in the green tree
 pub type Node = Rc<NodeData>;
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct NodeData {
     kind: SyntaxKind,
     children: Vec<NodeOrToken<Node, Token>>,
@@ -151,7 +152,7 @@ impl NodeData {
             .chain(right_children)
             .collect();
 
-        // the way this is written above is slow because the cloned() calls
+        // the way this is written above is costly because the cloned() calls
         // above are going to make a deep clone of the whole sub tree which
         // isn't as fast as it could be if structural sharing it used avoiding
         // the need to make deep copies

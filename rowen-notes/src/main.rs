@@ -15,6 +15,7 @@ mod green;
 mod red;
 mod kinds;
 mod lexer;
+mod green_node_parser;
 
 fn main() {
     println!("Hello, world!");

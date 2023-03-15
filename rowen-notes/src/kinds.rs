@@ -1,5 +1,5 @@
 /*
-  The Syntaxkind struct is used to identify the leaf nodes in "green" trees.
+  The Syntaxkind struct is used to identify the nodes in "green" trees.
 */
 
 
@@ -7,9 +7,11 @@
 pub struct SyntaxKind(u16);
 
 // Nodes
+pub const ROOT: SyntaxKind = SyntaxKind(0);
 pub const FN: SyntaxKind = SyntaxKind(1);
 pub const PARAM_LIST: SyntaxKind = SyntaxKind(2);
 pub const BIN_EXPR: SyntaxKind = SyntaxKind(3);
+pub const PAREN_EXPR: SyntaxKind = SyntaxKind(4);
 
 // Tokens
 pub const FN_KW: SyntaxKind = SyntaxKind(100);

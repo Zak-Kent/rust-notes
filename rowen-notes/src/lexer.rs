@@ -47,10 +47,12 @@ fn choose_token(input: &str) -> IResult<&str, Token> {
                               ident,
     ))(input)?;
     // wrapping tokens in Rc to match what's expected in green tree
+
+    // TODO: start using Rc to allow structural sharing between tokens
     Ok((input, Rc::new(token)))
 }
 
-fn lex(input: &str) -> IResult<&str, Vec<Token>> {
+pub fn lex(input: &str) -> IResult<&str, Vec<Token>> {
     let (input, tokens) = many1(choose_token)(input)?;
     assert!(input.is_empty());
     Ok((input, tokens))
