@@ -77,13 +77,11 @@ impl RedNodeData {
             offset_in_parent += green_child.text_len();
 
             match green_child {
-                NodeOrToken::Node(node) => {
-                    Rc::new(RedNodeData {
+                NodeOrToken::Node(node) => Rc::new(RedNodeData {
                     parent: Some(Rc::clone(self)),
                     offset,
                     green: Rc::clone(node).into(),
-                    })
-                },
+                }),
                 NodeOrToken::Token(token) => Rc::new(RedNodeData {
                     parent: Some(Rc::clone(self)),
                     offset,
@@ -109,11 +107,17 @@ mod red_node_tests {
         let green_root = gp::parse_exprs(tokens);
         let red_root = RedNodeData::new(green_root);
 
-        let root_children: Vec<RedNode> = red_root
-            .children()
-            .collect();
+        let root_children: Vec<RedNode> = red_root.children().collect();
 
         // there should be a total of 4 children from the root of the expr above
         assert_eq!(root_children.len(), 4);
+
+        // token children return empty iter, only inner expr: (+ 1 (* 2 3)) will
+        // return kinds and inner (* 2 3) counts as one node
+        let paren_expr_child_count = root_children.iter().flat_map(|child| {
+            child.children().map(|ic| ic.kind()).collect::<Vec<SyntaxKind>>()
+        })
+        .count();
+        assert_eq!(7, paren_expr_child_count);
     }
 }
