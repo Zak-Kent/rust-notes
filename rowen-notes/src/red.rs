@@ -64,6 +64,7 @@ impl RedNodeData {
     // static dispatch doesn't allow for this because the return types are
     // different
     pub fn children<'a>(self: &'a RedNode) -> Box<dyn Iterator<Item = RedNode> + 'a> {
+        // the match here is for GreenNodeOrToken defined in red.rs
         let node = match self.green() {
             NodeOrToken::Node(node) => node,
             // tokens don't have children, so they return empty iterator when hit
@@ -72,20 +73,21 @@ impl RedNodeData {
 
         let mut offset_in_parent = 0;
 
-        Box::new(node.children().iter().map(move |green_child| {
+        Box::new(node.children().map(move |green_child| {
             let offset = offset_in_parent + self.text_offset();
             offset_in_parent += green_child.text_len();
 
+            // match here is for NodeOrToken inside green nodes
             match green_child {
                 NodeOrToken::Node(node) => Rc::new(RedNodeData {
                     parent: Some(Rc::clone(self)),
                     offset,
-                    green: Rc::clone(node).into(),
+                    green: node.into()
                 }),
                 NodeOrToken::Token(token) => Rc::new(RedNodeData {
                     parent: Some(Rc::clone(self)),
                     offset,
-                    green: Rc::clone(token).into(),
+                    green: token.into()
                 }),
             }
         }))

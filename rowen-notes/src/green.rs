@@ -121,8 +121,12 @@ impl NodeData {
     pub fn text_len(&self) -> usize {
         self.len
     }
-    pub fn children(&self) -> &[NodeOrToken<Node, Token>] {
-        self.children.as_slice()
+
+    pub fn children(&self) -> impl Iterator<Item = NodeOrToken<Node, Token>> + '_ {
+        // Does this end up being an Rc::clone()? both Node and Token are Rc but
+        // does the cloned call see through the enum and inc the Rc counter on the
+        // wrapped Node/Token?
+        self.children.iter().cloned()
     }
 
     /// returns a new node with a child replaced in its children vector
@@ -133,20 +137,18 @@ impl NodeData {
         assert!(idx < self.children.len());
         let new_children: Vec<_> = self
             .children()
-            .iter()
             .take(idx) // takes elms up to idx return as iter
-            .cloned() // clones all elms in previous iter
             // iter::once used to put replacement in an iter
             .chain(iter::once(replacement.clone())) // chain two iters together
             // chain the first elms + replacement iter with everything
             // after the replaced child. (idx + 1) makes sure everything
             // before was dropped
-            .chain(self.children().iter().skip(idx + 1).cloned())
+            .chain(self.children().skip(idx + 1))
             .collect();
 
         // written another way that's more clear
-        let left_children = self.children().iter().take(idx).cloned();
-        let right_children = self.children().iter().skip(idx + 1).cloned();
+        let left_children = self.children().take(idx);
+        let right_children = self.children().skip(idx + 1);
         let other_new_children: Vec<_> = left_children
             .chain(iter::once(replacement))
             .chain(right_children)
@@ -163,7 +165,7 @@ impl NodeData {
 impl fmt::Display for NodeData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for child in self.children() {
-            fmt::Display::fmt(child, f)?;
+            fmt::Display::fmt(&child, f)?;
         }
         Ok(())
     }
