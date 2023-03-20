@@ -82,12 +82,12 @@ impl RedNodeData {
                 NodeOrToken::Node(node) => Rc::new(RedNodeData {
                     parent: Some(Rc::clone(self)),
                     offset,
-                    green: node.into()
+                    green: node.into(),
                 }),
                 NodeOrToken::Token(token) => Rc::new(RedNodeData {
                     parent: Some(Rc::clone(self)),
                     offset,
-                    green: token.into()
+                    green: token.into(),
                 }),
             }
         }))
@@ -116,10 +116,45 @@ mod red_node_tests {
 
         // token children return empty iter, only inner expr: (+ 1 (* 2 3)) will
         // return kinds and inner (* 2 3) counts as one node
-        let paren_expr_child_count = root_children.iter().flat_map(|child| {
-            child.children().map(|ic| ic.kind()).collect::<Vec<SyntaxKind>>()
-        })
-        .count();
+        let paren_expr_child_count = root_children
+            .iter()
+            .flat_map(|child| {
+                child
+                    .children()
+                    .map(|ic| ic.kind())
+                    .collect::<Vec<SyntaxKind>>()
+            })
+            .count();
         assert_eq!(7, paren_expr_child_count);
+    }
+
+    #[test]
+    fn can_use_red_api_to_navigate_tree() {
+        let expr = " (+ 1 (* 2 3)) 1";
+        let (leftover, tokens) = lex::lex(expr).unwrap();
+        assert!(leftover.is_empty());
+
+        let green_root = gp::parse_exprs(tokens);
+        let red_root = RedNodeData::new(green_root);
+
+        // 2nd child of red_root = (+ 1 (* 2 3))
+        // 6th child of expr above = (* 2 3)
+        // 4th child of expr above = 2
+        let two = red_root
+            .children().nth(1).unwrap()
+            .children().nth(5).unwrap()
+            .children().nth(3).unwrap();
+
+        // defer to green nodes impl of display
+        assert_eq!("2", format!("{}", two.green()));
+        assert_eq!(9, two.text_offset());
+
+        let mult_expr = two.parent().unwrap();
+        assert_eq!(
+            "(* 2 3)",
+            // this shows navigation from child to parent via the red node api
+            format!("{}", mult_expr.green())
+        );
+        assert_eq!(6, mult_expr.text_offset());
     }
 }
