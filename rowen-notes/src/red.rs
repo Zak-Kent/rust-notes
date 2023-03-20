@@ -27,14 +27,16 @@ pub type RedNode = Rc<RedNodeData>;
 #[derive(Debug, PartialEq, Eq)]
 struct RedNodeData {
     parent: Option<RedNode>,
+    idx: Option<usize>, // index in parent's green.children
     offset: usize,
     green: GreenNodeOrToken,
 }
 
 impl RedNodeData {
-    pub fn new(root: GreenNode) -> RedNode {
+    pub fn new_root(root: GreenNode) -> RedNode {
         Rc::new(RedNodeData {
             parent: None,
+            idx: None,
             offset: 0,
             green: root.into(),
         })
@@ -73,7 +75,7 @@ impl RedNodeData {
 
         let mut offset_in_parent = 0;
 
-        Box::new(node.children().map(move |green_child| {
+        Box::new(node.children().enumerate().map(move |(idx, green_child)| {
             let offset = offset_in_parent + self.text_offset();
             offset_in_parent += green_child.text_len();
 
@@ -81,11 +83,13 @@ impl RedNodeData {
             match green_child {
                 NodeOrToken::Node(node) => Rc::new(RedNodeData {
                     parent: Some(Rc::clone(self)),
+                    idx: Some(idx),
                     offset,
                     green: node.into(),
                 }),
                 NodeOrToken::Token(token) => Rc::new(RedNodeData {
                     parent: Some(Rc::clone(self)),
+                    idx: Some(idx),
                     offset,
                     green: token.into(),
                 }),
@@ -107,7 +111,7 @@ mod red_node_tests {
         assert!(leftover.is_empty());
 
         let green_root = gp::parse_exprs(tokens);
-        let red_root = RedNodeData::new(green_root);
+        let red_root = RedNodeData::new_root(green_root);
 
         let root_children: Vec<RedNode> = red_root.children().collect();
 
@@ -135,7 +139,7 @@ mod red_node_tests {
         assert!(leftover.is_empty());
 
         let green_root = gp::parse_exprs(tokens);
-        let red_root = RedNodeData::new(green_root);
+        let red_root = RedNodeData::new_root(green_root);
 
         // 2nd child of red_root = (+ 1 (* 2 3))
         // 6th child of expr above = (* 2 3)
