@@ -96,6 +96,38 @@ impl RedNodeData {
             }
         }))
     }
+
+    fn walk_up_tree_and_replace_nodes(self: &RedNode, new_green: GreenNode) -> RedNode {
+        match self.parent() {
+            // if there is a parent the idx value must exist, .unwrap() is safe
+            Some(parent) => {
+                match parent.replace_child(self.idx.unwrap(), new_green) {
+                    Some(red_node) => red_node,
+                    // When walking the tree upward it shouldn't be possible for replace_child
+                    // to hit a token on the way up after the first call, it should be nodes
+                    // the whole way to root. The extra unwrapping here is clumsy but necessary
+                    // for RedNodeData to handle both tokens and nodes wrapped in GreenNodeOrToken
+                    None => panic!("replace_child call hit a token on the way up :("),
+                }
+            }
+            None => RedNodeData::new_root(new_green),
+        }
+    }
+
+    /// Replace children in the underlying green tree via the RedNode API
+    /// Option is returned to prevent this method from being called on a GreenTokens
+    /// The returned RedNode will be the root RedNode for the updated tree
+    pub fn replace_child(self: &RedNode, idx: usize, new_green: GreenNode) -> Option<RedNode> {
+        // the match here is for GreenNodeOrToken defined above
+        let node = match self.green() {
+            NodeOrToken::Node(node) => node,
+            // tokens don't have children, so they aren't allowed to replace them
+            NodeOrToken::Token(_token) => return None,
+        };
+
+        let new_g_node = node.replace_child(idx, new_green.into());
+        Some(self.walk_up_tree_and_replace_nodes(new_g_node.into()))
+    }
 }
 
 #[cfg(test)]
@@ -160,5 +192,40 @@ mod red_node_tests {
             format!("{}", mult_expr.green())
         );
         assert_eq!(6, mult_expr.text_offset());
+    }
+
+    #[test]
+    fn can_navigate_tree_and_replace_a_node() {
+        let expr = "(+ 1 2 (* 3 4))";
+        let (leftover, tokens) = lex::lex(expr).unwrap();
+        assert!(leftover.is_empty());
+        let green_root = gp::parse_exprs(tokens);
+        let red_root = RedNodeData::new_root(green_root);
+
+        // construct a replacement GreenNode
+        let replacement = "(* 5 6)";
+        let (leftover, r_tokens) = lex::lex(replacement).unwrap();
+        assert!(leftover.is_empty());
+        let green_replacement = gp::parse_exprs(r_tokens);
+
+        // 0th child of expr = "(+ 1 2 (* 3 4))"
+        let child_expr = red_root.children().nth(0).unwrap();
+
+        // 5th child of child_expr = 2
+        let fifth_child = child_expr.children().nth(5).unwrap();
+        assert_eq!("2", format!("{}", fifth_child.green()));
+
+        // 2 in the original expr should be replaced with (* 5 6)
+        let replaced_expr = child_expr.replace_child(5, green_replacement).unwrap();
+        assert_eq!("(+ 1 (* 5 6) (* 3 4))",
+                   format!("{}", replaced_expr.clone().green()));
+
+        // notice a new root RedNode is returned from replace_child
+        let fifth_child_of_replaced = replaced_expr
+            // need to unwrap outer root node
+            .children().nth(0).unwrap()
+             // 5th child of replaced_expr = (* 5 6)
+            .children().nth(5).unwrap();
+        assert_eq!("(* 5 6)", format!("{}", fifth_child_of_replaced.green()));
     }
 }
