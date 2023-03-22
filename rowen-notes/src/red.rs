@@ -73,6 +73,24 @@ impl RedNodeData {
             NodeOrToken::Token(_token) => return Box::new(iter::empty()),
         };
 
+        /*
+        because we need to compute the offset_in_parent while we step through
+        children, any access to children is in linear time O(N). If we store
+        the offset_in_parent value for each child in the underlying
+        GreenNodeData.children vector using a pair (offset_in_parent, child)
+        you can then get an nth_child method that's O(1) avoiding the need to
+        keep track of the offset while iterating the children. This also allows
+        for a child_containting_range method that's O(log(N)) to find a child in
+        a range.
+
+        These methods are used in Rust-Analyzer to support pointers which are
+        either a path into a syntax tree or an offset where a child node lives
+        in the original text. These pointers allow Rust-Analyzer to pass
+        information about syntax nodes and how then change accross time. You can
+        save a pointer to a node and then don't have to keep the RedNode
+        structure for that node in memory, because the RedNode can be rebuilt
+        when needed from the green tree using the pointer
+         */
         let mut offset_in_parent = 0;
 
         Box::new(node.children().enumerate().map(move |(idx, green_child)| {
