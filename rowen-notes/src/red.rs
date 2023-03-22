@@ -16,12 +16,43 @@ use crate::green::{Node as GreenNode, NodeOrToken, Token as GreenToken};
 use crate::green_node_parser as gp;
 use crate::kinds::SyntaxKind;
 
+use core::fmt;
 use std::iter;
 use std::rc::Rc;
 
-// re-using NodeOrToken here to wrap the green nodes stored in RedNodeData
-// to avoid needing duplicated RedNodeData/RedTokenData structs
-type GreenNodeOrToken = NodeOrToken<GreenNode, GreenToken>;
+/*
+This enum is used to wrap the two types of green nodes that could be
+found in a red tree (GreenNode | GreenToken). Doing this lets RedNode
+handle both types and reduces duplication.
+ */
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum GreenNodeOrToken<N, T> {
+    Node(N),
+    Token(T),
+}
+
+impl From<GreenToken> for GreenNodeOrToken<GreenNode, GreenToken> {
+    fn from(v: GreenToken) -> Self {
+        Self::Token(v)
+    }
+}
+
+impl From<GreenNode> for GreenNodeOrToken<GreenNode, GreenToken> {
+    fn from(v: GreenNode) -> Self {
+        Self::Node(v)
+    }
+}
+
+impl fmt::Display for GreenNodeOrToken<GreenNode, GreenToken> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            GreenNodeOrToken::Node(n) => fmt::Display::fmt(n, f),
+            GreenNodeOrToken::Token(t) => fmt::Display::fmt(t, f),
+        }
+    }
+}
+
+type GreenNorT = GreenNodeOrToken<GreenNode, GreenToken>;
 
 pub type RedNode = Rc<RedNodeData>;
 #[derive(Debug, PartialEq, Eq)]
@@ -29,7 +60,7 @@ struct RedNodeData {
     parent: Option<RedNode>,
     idx: Option<usize>, // index in parent's green.children
     offset: usize,
-    green: GreenNodeOrToken,
+    green: GreenNorT,
 }
 
 impl RedNodeData {
@@ -42,17 +73,20 @@ impl RedNodeData {
         })
     }
 
-    pub fn green(&self) -> &GreenNodeOrToken {
+    pub fn green(&self) -> &GreenNorT {
         &self.green
     }
     pub fn kind(&self) -> SyntaxKind {
         match self.green() {
-            NodeOrToken::Node(node) => node.kind(),
-            NodeOrToken::Token(token) => token.kind(),
+            GreenNodeOrToken::Node(node) => node.kind(),
+            GreenNodeOrToken::Token(token) => token.kind(),
         }
     }
     pub fn text_len(&self) -> usize {
-        self.green().text_len()
+        match self.green() {
+            GreenNodeOrToken::Node(node) => node.text_len(),
+            GreenNodeOrToken::Token(token) => token.text_len(),
+        }
     }
     pub fn parent(&self) -> Option<&RedNode> {
         self.parent.as_ref()
@@ -66,11 +100,10 @@ impl RedNodeData {
     // static dispatch doesn't allow for this because the return types are
     // different
     pub fn children<'a>(self: &'a RedNode) -> Box<dyn Iterator<Item = RedNode> + 'a> {
-        // the match here is for GreenNodeOrToken defined in red.rs
         let node = match self.green() {
-            NodeOrToken::Node(node) => node,
+            GreenNodeOrToken::Node(node) => node,
             // tokens don't have children, so they return empty iterator when hit
-            NodeOrToken::Token(_token) => return Box::new(iter::empty()),
+            GreenNodeOrToken::Token(_token) => return Box::new(iter::empty()),
         };
 
         /*
@@ -136,11 +169,10 @@ impl RedNodeData {
     /// Option is returned to prevent this method from being called on a GreenTokens
     /// The returned RedNode will be the root RedNode for the updated tree
     pub fn replace_child(self: &RedNode, idx: usize, new_green: GreenNode) -> Option<RedNode> {
-        // the match here is for GreenNodeOrToken defined above
         let node = match self.green() {
-            NodeOrToken::Node(node) => node,
+            GreenNodeOrToken::Node(node) => node,
             // tokens don't have children, so they aren't allowed to replace them
-            NodeOrToken::Token(_token) => return None,
+            GreenNodeOrToken::Token(_token) => return None,
         };
 
         let new_g_node = node.replace_child(idx, new_green.into());
