@@ -191,8 +191,9 @@ mod red_node_tests {
         let expr = " (+ 1 (* 2 3)) 1";
         let (leftover, tokens) = lex::lex(expr).unwrap();
         assert!(leftover.is_empty());
+        let mut parser = gp::Parser::new(tokens);
 
-        let green_root = gp::parse_exprs(tokens);
+        let green_root = gp::parse_exprs(&mut parser);
         let red_root = RedNodeData::new_root(green_root);
 
         let root_children: Vec<RedNode> = red_root.children().collect();
@@ -219,8 +220,9 @@ mod red_node_tests {
         let expr = " (+ 1 (* 2 3)) 1";
         let (leftover, tokens) = lex::lex(expr).unwrap();
         assert!(leftover.is_empty());
+        let mut parser = gp::Parser::new(tokens);
 
-        let green_root = gp::parse_exprs(tokens);
+        let green_root = gp::parse_exprs(&mut parser);
         let red_root = RedNodeData::new_root(green_root);
 
         // 2nd child of red_root = (+ 1 (* 2 3))
@@ -249,14 +251,16 @@ mod red_node_tests {
         let expr = "(+ 1 2 (* 3 4))";
         let (leftover, tokens) = lex::lex(expr).unwrap();
         assert!(leftover.is_empty());
-        let green_root = gp::parse_exprs(tokens);
+        let mut parser = gp::Parser::new(tokens);
+        let green_root = gp::parse_exprs(&mut parser);
         let red_root = RedNodeData::new_root(green_root);
 
         // construct a replacement GreenNode
         let replacement = "(* 5 6)";
         let (leftover, r_tokens) = lex::lex(replacement).unwrap();
         assert!(leftover.is_empty());
-        let green_replacement = gp::parse_exprs(r_tokens);
+        let mut r_parser = gp::Parser::new(r_tokens);
+        let green_replacement = gp::parse_exprs(&mut r_parser);
 
         // 0th child of expr = "(+ 1 2 (* 3 4))"
         let child_expr = red_root.children().nth(0).unwrap();
