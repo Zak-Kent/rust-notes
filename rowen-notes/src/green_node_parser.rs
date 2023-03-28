@@ -86,7 +86,7 @@ pub fn parse_exprs(parser: &mut Parser) -> g::Node {
                     tokens so an incomplete node and error emitted
                     */
                     parser.errors.push(ParserError {
-                        msg: format!("Unmatched L_PAREN at pos: {}", parser.pos),
+                        msg: format!("Expected a matching L_PAREN for R_PAREN at pos: {}", parser.pos),
                         err: PError::UnmatchedParen,
                         pos: parser.pos,
                     });
@@ -99,6 +99,21 @@ pub fn parse_exprs(parser: &mut Parser) -> g::Node {
             _ => stack.push(tok.clone().into()),
         }
     }
+
+    // if a L_PAREN is still on the stack after all tokens parsed emit error
+    stack.iter().for_each(|elm| match elm {
+        g::NodeOrToken::Node(n) => {}
+        g::NodeOrToken::Token(t) => {
+            if t.kind == L_PAREN {
+                parser.errors.push(ParserError {
+                    msg: "Expected matching R_PAREN".to_owned(),
+                    err: PError::UnmatchedParen,
+                    pos: parser.pos,
+                });
+            }
+        }
+    });
+
     Rc::new(g::NodeData::new(ROOT, stack))
 }
 
@@ -106,6 +121,20 @@ pub fn parse_exprs(parser: &mut Parser) -> g::Node {
 mod parser_tests {
     use super::*;
     use crate::lexer as lex;
+
+    #[test]
+    fn emit_error_when_left_over_left_parens_on_stack() {
+        let expr = "1 2 ((2)";
+        let (leftover, tokens) = lex::lex(expr).unwrap();
+        assert!(leftover.is_empty());
+
+        let mut parser = Parser::new(tokens);
+        let _green_tree = parse_exprs(&mut parser);
+
+        assert_eq!(1, parser.errors.len());
+        let err_msg = &parser.errors.first().unwrap().msg;
+        assert_eq!("Expected matching R_PAREN", err_msg);
+    }
 
     #[test]
     fn emit_error_when_parens_dont_match() {
@@ -141,10 +170,7 @@ mod parser_tests {
         ));
 
         // node still is created without matching paren
-        let expected_green_tree = Rc::new(g::NodeData::new(
-            ROOT,
-            Vec::from([inner_expr.into()]),
-        ));
+        let expected_green_tree = Rc::new(g::NodeData::new(ROOT, Vec::from([inner_expr.into()])));
 
         //green tree is created and can round trip to str even with error
         assert_eq!(expr, format!("{green_tree}"));
