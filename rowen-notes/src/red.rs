@@ -56,7 +56,7 @@ type GreenNorT = GreenNodeOrToken<GreenNode, GreenToken>;
 
 pub type RedNode = Rc<RedNodeData>;
 #[derive(Debug, PartialEq, Eq)]
-struct RedNodeData {
+pub struct RedNodeData {
     parent: Option<RedNode>,
     idx: Option<usize>, // index in parent's green.children
     offset: usize,
