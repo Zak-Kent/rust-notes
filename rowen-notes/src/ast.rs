@@ -6,13 +6,13 @@ use crate::kinds as k;
 use crate::red as r;
 use crate::red::RedNode;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq, Eq)]
 enum Symbol {
     Plus,
     Mult,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq, Eq)]
 enum Term {
     Sym(Symbol), // symbol like * or +
     Ident,       // fn or var name
@@ -20,7 +20,11 @@ enum Term {
     Trivia,
 }
 
-#[derive(Debug, Clone)]
+// TODO: might want to clean up the types for exprs, it's a little clunky
+// to have to check if args is_some in order to figure out if you're at
+// a node or not
+
+#[derive(Debug)]
 struct Expr {
     red_node: RedNode,
     op_typ: Term,
@@ -117,5 +121,28 @@ mod ast_tests {
 
         // check arg count which includes trivia. ex. [_ 1 _ 2 )]
         assert_eq!(5, ast_expr.args.unwrap().len())
+    }
+
+    #[test]
+    fn parse_nested_paren_expr_to_ast() {
+        let expr = "(+ 1 2 (* 3 4))";
+        let (leftover, tokens) = lex::lex(expr).unwrap();
+        assert!(leftover.is_empty());
+        let mut parser = gp::Parser::new(tokens);
+        let green_root = gp::parse_exprs(&mut parser);
+        let red_root = r::RedNodeData::new_root(green_root);
+        let red_expr = red_root.children().nth(0).unwrap();
+        let ast_expr = Expr::parse_expr(red_expr).unwrap();
+
+        // check round trip from AST node back to string
+        assert_eq!(expr, format!("{}", ast_expr.red_node.green()));
+
+        // check arg count which includes trivia. ex. [_ 1 _ 2 _ <mult-node>)]
+        assert_eq!(7, ast_expr.args.as_ref().unwrap().len());
+
+        // check arg count which includes trivia. ex. [_ 3 _ 4 )]
+        let mult_node = &ast_expr.args.unwrap()[5];
+        assert_eq!(5, mult_node.args.as_ref().unwrap().len());
+        assert_eq!(Term::Sym(Symbol::Mult), mult_node.op_typ);
     }
 }
